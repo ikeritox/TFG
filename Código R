@@ -1,0 +1,234 @@
+library (NbClust)
+library (tidyverse)
+library (explore)
+library (factoextra)
+library(dplyr)
+library(DataExplorer)
+library(corrplot)
+library(stats)
+library(kableExtra)
+library (prophet)
+library(RMySQL)
+library(compareGroups)
+citation("stats")
+
+citation("prophet")
+#Importamos la matriz del My-SQL
+
+mysqlconnection = dbConnect(RMySQL::MySQL(),
+                            dbname='tfg',
+                            host='localhost',
+                            port=3306,
+                            user='root',
+                            password='')
+m<- dbReadTable(mysqlconnection,"matriz")
+citation("corrplot")
+matriz <- MATRIZ_PRINCIPAL_TFG_2_
+
+#Depuramos los datos y miramos que tengan las propiedades que queremos
+
+str(matriz)
+kbl(matriz)
+summary(matriz)
+#Todos los datos son de tipo numérico, cosa que permite luego trabajar con k-means
+
+#EDA
+
+sm<-summary(matriz)
+sm
+smtiendas <-cbind(matriz$Familias,matriz$`Tienda 1`)
+sm1<- as.data.frame(sm)
+smtiendas<-as.data.frame(smtiendas)
+boxplot(matriz$`Tienda 1`,matriz$`Tienda 2`,matriz$`Tienda 3`,matriz$`Tienda 4`,matriz$`Tienda 5`,main = "Frecuencias de venta en las Tiendas",at=c(1,2,3,4,5),names=c("Tienda 1","Tienda 2","Tienda 3","Tienda 4","Tienda 5"),las = 2,xlab = "Ventas de familia al día",horizontal=TRUE,col = "grey",outline = TRUE)
+ggplot(matriz) +geom_boxplot(mapping=aes(x=V1,y=V2))
+
+
+#Exportamos el resumen con la función del Kable
+
+sm <-sm[,-(1),drop=FALSE]
+
+kbl(t) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+#Hacemos un explore para ver los valores
+explore (matriz)
+
+#DF sin la primera columna, para que sea todo numérico
+
+set.seed(1234)
+t<-matriz
+t<-t[,-1]
+
+str(matriz)
+Ventas_Mensuales
+Ventas_Mensuales<-Ventas_Mensuales$MES
+Ventas_Mensuales2$MES<-factor(Ventas_Mensuales2$MES,levels=c("ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"))
+ggplot(Ventas_Mensuales2) +geom_col(mapping=aes(x=MES,y=VENTAS),color='grey')+theme(axis.text.x = element_text(angle=45,vjust=0.5,hjust=1))+geom_text(aes(x=MES,y=VENTAS,label=VENTAS),vjust=2,colour ='white')+geom_line(mapping=aes(x=NMES,y=VENTAS),color="gray29",size=1)
+ggplot(Ventas_Mensuales2) +geom_line(mapping=aes(x=NMES,y=VENTAS))
+
+M <- round(cor(t),digits=2)
+M
+corrplot.mixed(M,number.cex=0.5,tl.cex=0.5,cl.cex=0.5)
+plot_intro(matriz)
+
+
+
+
+
+#Ahora tenemos todos los datos explicados, y vemos los valores que toman cada variable.
+#Una vez tenemos los datos claros, vamos a determinar el número de Centroides.
+
+#2 Centros
+
+centroides <- kmeans(x = t, centers = 2, nstart = 100)
+
+cdf2 <- centroides$cluster
+
+#3 Centros
+
+centroides <- kmeans(x = t, centers = 3, nstart = 100)
+
+cdf3 <- centroides$cluster
+
+#4 Centros
+
+centroides <- kmeans(x = t, centers = 4, nstart = 100)
+
+cdf4 <- centroides$cluster
+print(centroides)
+
+#5 Centros
+set.seed(1234)
+rm(tdf)
+centroides <- kmeans(x = t, centers = 5, nstart = 100)
+
+cdf5 <- centroides$cluster
+
+tdf <- cbind(t,cdf2,cdf3,cdf4,cdf5)
+tdf
+ccdf <- cbind(cdf2,cdf3,cdf4,cdf5)
+ccdf
+tdf$cdf2 <-ordered(tdf$cdf2,levels=c("1","2","3","4","5"))
+tdf$cdf3 <-ordered(tdf$cdf3,levels=c("1","2","3","4","5"))
+tdf$cdf4 <-ordered(tdf$cdf4,levels=c("1","2","3","4","5"))
+tdf$cdf5 <-ordered(tdf$cdf5,levels=c("1","2","3","4","5"))
+group_by(tdf, cdf2) %>%
+  summarise(
+    count = n(),
+    mean = mean(weight, na.rm = TRUE),
+    sd = sd(weight, na.rm = TRUE),
+    median = median(weight, na.rm = TRUE),
+    IQR = IQR(weight, na.rm = TRUE)
+  )
+levels(tdf$cdf2)
+#Exportar a Excel
+write.csv(tdf, "C:\\Users\\ikerg\\Desktop\\TFG\\TDF\\tdf.csv", row.names=FALSE)
+
+fviz_cluster(centroides,data=t)
+
+#EDA DANI 10/05
+
+y <- rescale(t)
+plot_qq(matriz)
+plot_intro(matriz,title = "Datos de la Matriz")
+plot_boxplot(matriz,by = "UDS")
+plot_correlation(matriz,type="continuous")
+create_report(matriz)
+df <- t %>% mutate_all(function(x){(x-min(x))/(max(x)-min(x))})
+row.names(df) <- row.names(matriz)
+dd <- dist(df, method="euclidean")
+fviz_dist(dd,lab_size = 7)
+
+#Ventas Agrupadas
+
+va <- ventasagrupadas
+vag <- aggregate(va$...2,list(va$Agrupacions),sum)
+vag
+vad <- unique(va$Agrupacions)
+vagdf <- cbind(vad,vag)
+vagdf
+
+vdf <- as.data.frame(vagdf)
+vdfa <- vdf[,-1]
+new_data <- vdf%>% arrange(desc(x))
+new_data_topn <- new_data[c(1:20),]
+
+ggplot(new_data_topn,aes(x=Group.1,y=x)) + geom_col()+ theme(axis.text.x = element_text(angle=90, vjust=0.5,hjust=1))+
+
+
+write.csv(forecast, "C:\\Users\\ikerg\\Desktop\\TFG\\TDF\\forecast.csv", row.names=FALSE)
+
+#krusker walis 25/06/2023
+
+tdf
+
+matrizcluster <- select_if(tdf,is.numeric)
+kruskal_results<- list()
+for (col in 1:30){
+  kruskal_results[[col]] <- kruskal.test(matrizcluster[[col]],matrizcluster$cdf5)
+  
+}
+
+for (i in 1:30){
+  print(kruskal_results[[i]])
+}
+kruskal_results[[1]]
+kruskal.test(t)
+
+
+#Wilcox test entre columnas individuales
+
+tienda1 <- t[1]
+tienda2 <- t[2]
+tienda3 <- t[3]
+tienda4 <- t[4]
+tienda5 <- t[5]
+
+mtienda1 <- as.matrix(tienda1)
+mtienda2 <- as.matrix(tienda2)
+mtienda3 <- as.matrix(tienda3)
+mtienda4 <- as.matrix(tienda4)
+mtienda5 <- as.matrix(tienda5)
+
+
+wilcox.test(mtienda1,mtienda2)
+wilcox.test(mtienda1,mtienda3)
+wilcox.test(mtienda1,mtienda4)
+wilcox.test(mtienda1,mtienda5)
+wilcox.test(mtienda2,mtienda3)
+wilcox.test(mtienda2,mtienda4)
+wilcox.test(mtienda2,mtienda5)
+wilcox.test(mtienda3,mtienda4)
+wilcox.test(mtienda3,mtienda5)
+wilcox.test(mtienda4,mtienda5)
+
+#Histograma precios
+a <- matriz$`Tienda 1`
+a
+a <- as.data.frame(a)
+c <- ggplot (a, aes(x=a)) + geom_histogram()
+c             
+newmatriz <- matriz
+newmatriz$`Tienda 1` <- newmatriz$`Tienda 1`*721
+newmatriz
+Regresion <- lm(as.factor(`Tienda 1`) ~ UDS + XS + S + L+ M + XL + U + ENERO + FEBRERO + MARZO + ABRIL + MAYO + JUNIO + JULIO + AGOSTO + SETIEMBRE + OCTUBRE + NOVIEMBRE + DICIEMBRE, data = newmatriz)
+summary(Regresion)                     
+plot(Regresion)
+
+
+#COMPARE GROUPS
+matrizcluster<-matrizcluster[,-c(31,32,33)]
+results<-compareGroups(cdf5 ~ .,data=matrizcluster)
+ctable<-createTable(results)
+ctable
+
+
+#Prophet 18/08/2023
+
+mprof <- Clusters
+prf<-prophet (mprof,daily.seasonality = TRUE)
+future <- make_future_dataframe(prf,periods = 365)
+forecast <- predict (prf,future)
+plot (prf,forecast)
+prophet_plot_components(prf,forecast)
+forecast
